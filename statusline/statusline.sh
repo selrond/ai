@@ -2,7 +2,7 @@
 # Claude Code statusline: three lines, color = meaning. Needs a Nerd Font (v3),
 # a truecolor terminal, jq and git. Plain bash 3.2+ (macOS /bin/bash works).
 #
-#   ✶ opus 5.5·1m   ▪▪▪▪▪   ▪▪▪▪▪▪▪▪▪▪ 320k/1m  ·   5h ▪▪▪▪▪▪▪▪▪▪ 6% 4h20m · 7d ▪▪▪▪▪▪▪▪▪▪ 22% 4d11h
+#   * opus 5.5·1m   ▪▪▪▪▪   ▪▪▪▪▪▪▪▪▪▪ 320k/1m  ·   5h ▪▪▪▪▪▪▪▪▪▪ 6% 4h20m · 7d ▪▪▪▪▪▪▪▪▪▪ 22% 4d11h
 #    ai/statusline   main +1 ?1
 #   statusline design · 3f9c2e7a-58b1-4d06-9a4e-c1b7d2e8f041
 #
@@ -49,7 +49,7 @@ I_DIR=$'\xef\x93\x93'   # U+F4D3 oct-file-directory-fill (folder the session sta
 I_CWD=$'\xef\x93\x94'   # U+F4D4 oct-file-directory-open-fill (where the agent is)
 I_BRANCH=$'\xef\x90\x98' # U+F418 oct-git-branch
 I_TREE=$'\xef\x90\x82'   # U+F402 oct-repo-forked (git worktree)
-I_CLAUDE='✶'
+I_CLAUDE='*'
 I_EFFORT=$'\xef\x91\xa3'   # U+F463 oct-meter (effort)
 I_CTX=$'\xef\x92\xbc'   # U+F4BC oct-cpu (context window)
 I_LIMIT=$'\xef\x93\xa3'   # U+F4E3 oct-hourglass (rate limits)
