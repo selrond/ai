@@ -2,7 +2,7 @@
 # Claude Code statusline: three lines, color = meaning. Needs a Nerd Font (v3),
 # a truecolor terminal, jq and git. Plain bash 3.2+ (macOS /bin/bash works).
 #
-#   ✻ opus 5.5·1m   ▮▮▯▯▯   ▮▮▮▯▯▯▯▯▯▯ 320k/1m  ·   5h ▮▯▯▯▯▯▯▯▯▯ 6% 4h20m · 7d ▮▮▯▯▯▯▯▯▯▯ 22% 4d11h
+#   ✶ opus 5.5·1m   ▪▪▪▪▪   ▪▪▪▪▪▪▪▪▪▪ 320k/1m  ·   5h ▪▪▪▪▪▪▪▪▪▪ 6% 4h20m · 7d ▪▪▪▪▪▪▪▪▪▪ 22% 4d11h
 #    ai/statusline   main +1 ?1
 #   statusline design · 3f9c2e7a-58b1-4d06-9a4e-c1b7d2e8f041
 #
@@ -49,7 +49,7 @@ I_DIR=$'\xef\x93\x93'   # U+F4D3 oct-file-directory-fill (folder the session sta
 I_CWD=$'\xef\x93\x94'   # U+F4D4 oct-file-directory-open-fill (where the agent is)
 I_BRANCH=$'\xef\x90\x98' # U+F418 oct-git-branch
 I_TREE=$'\xef\x90\x82'   # U+F402 oct-repo-forked (git worktree)
-I_CLAUDE='✻'
+I_CLAUDE='✶'
 I_EFFORT=$'\xef\x91\xa3'   # U+F463 oct-meter (effort)
 I_CTX=$'\xef\x92\xbc'   # U+F4BC oct-cpu (context window)
 I_LIMIT=$'\xef\x93\xa3'   # U+F4E3 oct-hourglass (rate limits)
@@ -187,8 +187,8 @@ if [[ -n $groot ]]; then
   (( stg + uns + unt )) && gc=$WARN
   (( cf )) && gc=$CRIT
   g="$I_BRANCH $br"
-  (( a ))   && g+=" ⇡$a"
-  (( b ))   && g+=" ⇣$b"
+  (( a ))   && g+=" ↑$a"
+  (( b ))   && g+=" ↓$b"
   (( cf ))  && g+=" ~$cf"
   (( stg )) && g+=" +$stg"
   (( uns )) && g+=" !$uns"
@@ -219,7 +219,7 @@ if [[ -n $model ]]; then
       m+="  ${e}[38;2;${EFFORT_RGB[lv-1]}m$I_EFFORT${ICON_GAP}"   # icon shares the level color
       for ((i=1; i<=5; i++)); do
         (( i == lv + 1 )) && m+="${e}[38;5;${BAR_EMPTY}m"
-        m+="▮"
+        m+="▪"
       done
       m+="${e}[38;5;${NEU_DIM}m"
     else
@@ -242,7 +242,7 @@ fmt_tok() {
   else TOK=$t; fi
 }
 
-# context window: 10 ▮ segments (10% each). White = how much is filled
+# context window: 10 ▪ segments (10% each). White = how much is filled
 # (used), growing from the left; dark = still free. Less is better.
 # Turns yellow from CTX_WARN% and red from CTX_CRIT% (same colors as the
 # rate limits): context is the thing most likely to need you (compaction).
@@ -256,7 +256,7 @@ if [[ -n $ctx ]]; then
   cb=$hc
   for ((i=0; i < 10; i++)); do
     (( i == u )) && cb+="${e}[38;5;${BAR_EMPTY}m"
-    cb+="▮"
+    cb+="▪"
   done
   # "used/total" to match the bar; percent if counts unknown
   if [[ -n $ctx_tok && -n $ctx_size ]]; then
@@ -265,15 +265,15 @@ if [[ -n $ctx ]]; then
   line+="${line:+  }${e}[38;5;${NEU_DIM}m$I_CTX${ICON_GAP}${cb} ${cnt}${R}"
 fi
 
-# rate limits: "5h ▮▮▮▮▮▮▮▮▮▮ 35% 1h12m"
+# rate limits: "5h ▪▪▪▪▪▪▪▪▪▪ 35% 1h12m"
 # Bar = what you've USED, filling up from the left: used segments are
-# colored, the rest dim. All segments are the same ▮ glyph, BAR_W of 10%
+# colored, the rest dim. All segments are the same ▪ glyph, BAR_W of 10%
 # each; any use fills at least one.
 # Number = % used. Dim countdown = time until the window resets.
 # Color: green while fine; yellow when usage runs PACE_AHEAD points ahead of
 # the time elapsed in the window or passes LIMIT_WARN; red past LIMIT_CRIT.
 BAR_W=10 BAR_NEU=114 PACE_AHEAD=10
-SEG="▮"   # segment glyph, 10% each
+SEG="▪"   # segment glyph, 10% each
 bar() {  # used_pct color -> sets BAR
   local n=$(( ($1 * BAR_W + 50) / 100 )) i
   (( n > BAR_W )) && n=$BAR_W

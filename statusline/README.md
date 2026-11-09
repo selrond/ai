@@ -23,7 +23,7 @@ A three-line [Claude Code](https://code.claude.com) statusline. Every color mean
 - **Session folder** (closed folder icon): where the session started. Inside a git repo it's shown relative to the repo root. Long paths are shortened only when they don't fit.
 - **Agent folder** (open folder icon), after `→`, only when the agent is somewhere else: relative inside the project or worktree, a full `~` path outside it.
 - **Worktree** (purple), only inside a git worktree, then `/` and the branch.
-- **Git branch** in p10k-style notation: `⇡` ahead, `⇣` behind, `+` staged, `!` modified, `?` untracked, `~` conflicts.
+- **Git branch** in p10k-style notation: `↑` ahead, `↓` behind, `+` staged, `!` modified, `?` untracked, `~` conflicts.
   - Green when clean, yellow with changes, red on conflicts. It always follows the agent.
 
 ```text
