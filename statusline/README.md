@@ -18,11 +18,19 @@ A three-line [Claude Code](https://code.claude.com) statusline. Every color mean
   - Yellow when you're spending faster than time passes, or above 70%.
   - Red above 90%.
 
-**Line 2, the workspace.**
+**Line 2, the workspace:** `session folder/ → agent folder/ · worktree / branch`
 
-- **Folder**. Inside a git repo it's shown relative to the repo root. Long paths are shortened only when they don't fit.
-- **Git branch**, in p10k-style notation: `⇡` ahead, `⇣` behind, `+` staged, `!` modified, `?` untracked, `~` conflicts.
-  - Green when clean, yellow with changes, red on conflicts.
+- **Session folder** (closed folder icon): where the session started. Inside a git repo it's shown relative to the repo root. Long paths are shortened only when they don't fit.
+- **Agent folder** (open folder icon), after `→`, only when the agent is somewhere else: relative inside the project or worktree, a full `~` path outside it.
+- **Worktree** (purple), only inside a git worktree, then `/` and the branch.
+- **Git branch** in p10k-style notation: `⇡` ahead, `⇣` behind, `+` staged, `!` modified, `?` untracked, `~` conflicts.
+  - Green when clean, yellow with changes, red on conflicts. It always follows the agent.
+
+```text
+ ai/ ·  main !1                                       agent where the session started
+ ai/ →  statusline/ ·  main !1                       agent in a subfolder
+ ai/ →  statusline/ ·  feature-x /  feature-x !1   agent in a worktree subfolder
+```
 
 **Line 3, the session.** Its name (if you've named it), then the full session ID in dim grey, ready to copy for `claude --resume <id>`.
 

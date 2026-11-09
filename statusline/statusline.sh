@@ -45,10 +45,10 @@ ICON_GAP=" "   # space after every icon
 # ---- glyphs (Nerd Font v3) ----
 # All icons are octicons so they draw at the same size (Material Design
 # icons render noticeably smaller in many Nerd Fonts).
-I_DIR=$'\xef\x90\x93'   # U+F413 oct-file-directory (dir outside a repo; narrow, matches oct-repo)
-I_REPO=$'\xef\x90\x81'  # U+F401 oct-repo     (dir inside a repo)
+I_DIR=$'\xef\x93\x93'   # U+F4D3 oct-file-directory-fill (folder the session started in)
+I_CWD=$'\xef\x93\x94'   # U+F4D4 oct-file-directory-open-fill (where the agent is)
 I_BRANCH=$'\xef\x90\x98' # U+F418 oct-git-branch
-I_TREE=$'\xef\x86\xbb'  # U+F1BB tree         (git worktree)
+I_TREE=$'\xef\x90\x82'   # U+F402 oct-repo-forked (git worktree)
 I_CLAUDE='✻'
 I_EFFORT=$'\xef\x91\xa3'   # U+F463 oct-meter (effort)
 I_CTX=$'\xef\x92\xbc'   # U+F4BC oct-cpu (context window)
@@ -59,12 +59,13 @@ e=$'\033'
 R="${e}[0m" B="${e}[1m" NB="${e}[22m"
 
 # ---- read everything in one jq pass (unit separator keeps empty fields) ----
-IFS=$'\x1f' read -r cwd model effort ctx ctx_size ctx_tok style vim h5 h5r d7 d7r wt sname sid now < <(
+IFS=$'\x1f' read -r cwd pdir model effort ctx ctx_size ctx_tok style vim h5 h5r d7 d7r wt sname sid now < <(
   jq -r '
     def ep: if type=="string" then (try (sub("\\.[0-9]+";"") | sub("(Z|[+-]00:?00)$";"") + "Z" | fromdateiso8601) catch "")
             elif . then floor else "" end;
     def s: if . == null then "" else tostring end;
     [ (.workspace.current_dir // .cwd),
+      (.workspace.project_dir // .workspace.current_dir // .cwd),
       (.model.display_name // .model.id),
       (.effort.level // .effort),
       (.context_window.used_percentage | if . then floor else null end),
@@ -98,12 +99,24 @@ mtime() {  # file mtime, BSD (macOS) or GNU (Linux) stat
 
 # ===== workspace =====
 
-# dir: repo-relative inside git (spaceship), ~-relative otherwise
-groot=""; [[ -n $cwd ]] && groot=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)
-if [[ -n $groot ]]; then
-  p=${groot##*/}${cwd#"$groot"}; anchor0=1 icon=$I_REPO
+# Line 2:  session folder/ → agent folder/ · worktree / branch
+#   ai/ · main !1                          agent where the session started
+#   ai/ → statusline/ · main !1            agent in a subfolder
+#   ai/ · feature / feature-branch !1      agent in a git worktree
+# Folder: where the session started (project_dir), repo-relative inside git
+# (spaceship), ~-relative otherwise. If the agent is somewhere else
+# (current_dir), "→ <that place>" is appended. git status follows the agent.
+groot="" gdir=""
+[[ -n $cwd ]] && { IFS= read -r groot; IFS= read -r gdir; } < <(git -C "$cwd" rev-parse --show-toplevel --absolute-git-dir 2>/dev/null)
+# linked git worktree (git worktree add): its git dir is <main>/.git/worktrees/<name>
+mainrepo=""
+if [[ $gdir == */.git/worktrees/* ]]; then mainrepo=${gdir%/.git/worktrees/*}; mainrepo=${mainrepo##*/}; fi
+proot=$groot
+[[ $pdir != "$cwd" ]] && { proot=""; [[ -n $pdir ]] && proot=$(git -C "$pdir" rev-parse --show-toplevel 2>/dev/null); }
+if [[ -n $proot ]]; then
+  p=${proot##*/}${pdir#"$proot"}; anchor0=1
 else
-  p=${cwd/#$HOME/\~}; anchor0=0 icon=$I_DIR
+  p=${pdir/#$HOME/\~}; anchor0=0
 fi
 # Show the full path; only when it's longer than DIR_MAX chars, shorten
 # parent folders (to 1 char, 2 for dot-folders) from the left until it fits.
@@ -128,12 +141,28 @@ for ((i=0; i<n; i++)); do
   fi
   (( i < n-1 )) && dir+="${e}[38;5;${DIR_FG}m/"
 done
-[[ -n $cwd ]] && seg $DIR_ANCHOR "$icon${ICON_GAP}$dir"
+dir+="${B}${e}[38;5;${DIR_ANCHOR}m/${NB}"                  # trailing / = directory, styled like the folder name
+# where the agent is, when it differs: relative inside the worktree / project,
+# full ~ path outside it
+inwt=""; [[ -n $groot && ( -n $mainrepo || -n $wt ) ]] && inwt=1
+away=""
+if [[ -n $inwt ]]; then
+  [[ $cwd == "$groot"/* ]] && away=${cwd#"$groot"/}
+elif [[ -n $cwd && $cwd != "$pdir" ]]; then
+  if [[ $cwd == "$pdir"/* ]]; then away=${cwd#"$pdir"/}
+  else away=${cwd/#$HOME/\~}; fi
+fi
+if (( ${#away} > 40 )); then t=${away%/*}; away="…/${t##*/}/${away##*/}"; fi  # long: last two folders
+wpath="${e}[38;5;${DIR_ANCHOR}m$I_DIR${ICON_GAP}$dir"
+[[ -n $away ]] && wpath+=" ${e}[38;5;${NEU_DIM}m→ ${e}[38;5;${DIR_ANCHOR}m$I_CWD${ICON_GAP}${B}$away/${NB}"
+sep=" ${e}[38;5;${NEU_DIM}m/ "
+wtpart=""; [[ -n $inwt ]] && wtpart="${e}[38;5;${MODE}m$I_TREE${ICON_GAP}${wt:-${groot##*/}}$sep"
 
 # git: color = state (clean / dirty / conflicted)
 # Kept as-is after a prototype round. Rejected: per-kind icons + colors (wide,
 # no "clean" signal), summary count (lost staged/modified/new split), diff
 # line counts (extra git call, hides what's staged).
+gpart=""
 if [[ -n $groot ]]; then
   cache="${TMPDIR:-/tmp}/cc-statusline-${groot//\//_}"
   if [[ -f $cache ]] && (( now - $(mtime "$cache") < GIT_TTL )); then
@@ -164,9 +193,9 @@ if [[ -n $groot ]]; then
   (( stg )) && g+=" +$stg"
   (( uns )) && g+=" !$uns"
   (( unt )) && g+=" ?$unt"
-  seg $gc "$g"
+  gpart="${e}[38;5;${gc}m$g"
 fi
-[[ -n $wt ]] && seg $MODE "$I_TREE $wt"
+[[ -n $pdir ]] && line+="$wpath${gpart:+ ${e}[38;5;${NEU_DIM}m·${R} $wtpart$gpart}$R"
 ws=$line; line=""   # workspace goes on the second line
 
 # session (third line): name (if set) + full id, so it can be copied
