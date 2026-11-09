@@ -2,7 +2,7 @@
 # Claude Code statusline: three lines, color = meaning. Needs a Nerd Font (v3),
 # a truecolor terminal, jq and git. Plain bash 3.2+ (macOS /bin/bash works).
 #
-#   * opus 5.5·1m   ▪▪▪▪▪   ▪▪▪▪▪▪▪▪▪▪ 320k/1m  ·   5h ▪▪▪▪▪▪▪▪▪▪ 6% 4h20m · 7d ▪▪▪▪▪▪▪▪▪▪ 22% 4d11h
+#   * opus 5.5·1m       320k/1m  ·   5h  6% 4h20m · 7d  22% 4d11h
 #    ai/statusline   main +1 ?1
 #   statusline design · 3f9c2e7a-58b1-4d06-9a4e-c1b7d2e8f041
 #
@@ -50,6 +50,12 @@ I_CWD=$'\xef\x93\x94'   # U+F4D4 oct-file-directory-open-fill (where the agent i
 I_BRANCH=$'\xef\x90\x98' # U+F418 oct-git-branch
 I_TREE=$'\xef\x90\x82'   # U+F402 oct-repo-forked (git worktree)
 I_CLAUDE='*'
+I_SEG=$'\xef\x91\x85'   # U+F445 oct-square-fill: rounded bar segment
+# Ghostty draws a Nerd Font icon up to 2 cells wide when the next cell is a
+# space, which made the last segment of each bar bigger. BLANK (U+2800, empty
+# braille) looks like a space but isn't one to Ghostty, and isn't whitespace
+# to Claude Code either (a no-break space got normalized). Used after bars.
+BLANK=$'\xe2\xa0\x80'
 I_EFFORT=$'\xef\x91\xa3'   # U+F463 oct-meter (effort)
 I_CTX=$'\xef\x92\xbc'   # U+F4BC oct-cpu (context window)
 I_LIMIT=$'\xef\x93\xa3'   # U+F4E3 oct-hourglass (rate limits)
@@ -219,15 +225,16 @@ if [[ -n $model ]]; then
       m+="  ${e}[38;2;${EFFORT_RGB[lv-1]}m$I_EFFORT${ICON_GAP}"   # icon shares the level color
       for ((i=1; i<=5; i++)); do
         (( i == lv + 1 )) && m+="${e}[38;5;${BAR_EMPTY}m"
-        m+="▪"
+        m+="$I_SEG"
       done
       m+="${e}[38;5;${NEU_DIM}m"
+      [[ -n $style && $style != default ]] || m+="${BLANK}"   # keep the cell after the bar non-space
     else
       m+=" ${e}[38;5;${NEU_DIM}m$(lower "$effort")"   # unknown level: show the word
     fi
   fi
   if [[ -n $style && $style != default ]]; then      # output style, only if non-default
-    [[ -n $effort ]] && m+=" ·"
+    [[ -n $effort ]] && m+="${BLANK}·"
     m+=" ${e}[38;5;${NEU_DIM}m$(lower "$style")"
   fi
   seg $EFFORT_FG "$I_CLAUDE${e}[38;5;${NEU_FG}m $m"
@@ -242,7 +249,7 @@ fmt_tok() {
   else TOK=$t; fi
 }
 
-# context window: 10 ▪ segments (10% each). White = how much is filled
+# context window: 10  segments (10% each). White = how much is filled
 # (used), growing from the left; dark = still free. Less is better.
 # Turns yellow from CTX_WARN% and red from CTX_CRIT% (same colors as the
 # rate limits): context is the thing most likely to need you (compaction).
@@ -256,24 +263,24 @@ if [[ -n $ctx ]]; then
   cb=$hc
   for ((i=0; i < 10; i++)); do
     (( i == u )) && cb+="${e}[38;5;${BAR_EMPTY}m"
-    cb+="▪"
+    cb+="$I_SEG"
   done
   # "used/total" to match the bar; percent if counts unknown
   if [[ -n $ctx_tok && -n $ctx_size ]]; then
     fmt_tok "$ctx_tok"; cnt="${hc}${TOK}"; fmt_tok "$ctx_size"; cnt+="${e}[38;5;${NEU_DIM}m/${TOK}"
   else cnt="${hc}${ctx}%"; fi
-  line+="${line:+  }${e}[38;5;${NEU_DIM}m$I_CTX${ICON_GAP}${cb} ${cnt}${R}"
+  line+="${line:+  }${e}[38;5;${NEU_DIM}m$I_CTX${ICON_GAP}${cb}${BLANK}${cnt}${R}"
 fi
 
-# rate limits: "5h ▪▪▪▪▪▪▪▪▪▪ 35% 1h12m"
+# rate limits: "5h  35% 1h12m"
 # Bar = what you've USED, filling up from the left: used segments are
-# colored, the rest dim. All segments are the same ▪ glyph, BAR_W of 10%
+# colored, the rest dim. All segments are the same  glyph, BAR_W of 10%
 # each; any use fills at least one.
 # Number = % used. Dim countdown = time until the window resets.
 # Color: green while fine; yellow when usage runs PACE_AHEAD points ahead of
 # the time elapsed in the window or passes LIMIT_WARN; red past LIMIT_CRIT.
 BAR_W=10 BAR_NEU=114 PACE_AHEAD=10
-SEG="▪"   # segment glyph, 10% each
+SEG=$I_SEG   # segment glyph, 10% each
 bar() {  # used_pct color -> sets BAR
   local n=$(( ($1 * BAR_W + 50) / 100 )) i
   (( n > BAR_W )) && n=$BAR_W
@@ -302,7 +309,7 @@ limit() {  # label used_pct reset_epoch window_seconds
   lit=$HC; [[ $HC == "$NEU_DIM" ]] && lit=$BAR_NEU
   bar "$v" "$lit"
   # usage group: "·   5h … · 7d …" - wide-spaced dot + shared icon, tight · between limits
-  local body="${e}[38;5;${HC}m$1 $BAR${e}[38;5;${lit}m ${v}%${t:+ ${e}[38;5;${NEU_DIM}m$t}${R}"
+  local body="${e}[38;5;${HC}m$1 $BAR${e}[38;5;${lit}m${BLANK}${v}%${t:+ ${e}[38;5;${NEU_DIM}m$t}${R}"
   if [[ -z $USAGE_OPEN ]]; then
     line+="${line:+  ${e}[38;5;${NEU_DIM}m·  }${e}[38;5;${NEU_DIM}m$I_LIMIT${ICON_GAP}$body"; USAGE_OPEN=1
   else
